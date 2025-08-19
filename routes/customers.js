@@ -3,30 +3,35 @@ const express = require("express");
 const router = express();
 const Joi = require("joi");
 
-const genreSchema = new mongoose.Schema({
+const customerSchema = new mongoose.Schema({
+  isGold: { type: Boolean, default: false },
   name: { type: String, required: true, minlength: 3, maxlength: 50 },
+  phone: { type: String, required: true, minlength: 9, maxlength: 15 },
 });
 
-const Genre = mongoose.model("genres", genreSchema);
+const Customer = mongoose.model("customers", customerSchema);
 
 // GET requests
 router.get("/", async (req, res) => {
   try {
-    const genres = await Genre.find().sort("name");
-    res.send(genres);
+    const customers = await Customer.find().sort("name");
+    res.send(customers);
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
 router.get("/:id", async (req, res) => {
   try {
-    const genre = await Genre.findById(req.params.id);
-    if (!genre) {
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) {
       return res
         .status(404)
-        .send(`The genre with the given ID (${req.params.id}) was not found.`);
+        .send(
+          `The customer with the given ID (${req.params.id}) was not found.`
+        );
     }
-    res.send(genre);
+    res.send(customer);
   } catch (err) {
     res.status(400).send(`Invalid ID format: ${req.params.id}`);
   }
@@ -34,46 +39,53 @@ router.get("/:id", async (req, res) => {
 
 // POST request
 router.post("", async (req, res) => {
-  const { error } = validateGenre(req.body);
+  const { error } = validateCustomer(req.body);
 
   if (error) return res.status(400).send(error.details[0].message);
 
-  const genre = new Genre({
+  const customer = new Customer({
+    isGold: req.body.isGold,
     name: req.body.name,
+    phone: req.body.phone,
   });
 
   try {
-    await genre.save();
-    res.send(genre);
+    await customer.save();
+    res.send(customer);
   } catch (ex) {
     for (field in ex.errors) {
       console.log(field.toUpperCase() + ":", ex.errors[field].message);
     }
   }
 });
-
 // PUT request
 router.put("/:id", async (req, res) => {
   if (!req.body) return res.status(400).send("Missing data request. ");
 
-  const { error } = validateGenre(req.body);
+  const { error } = validateCustomer(req.body);
 
   if (error) return res.status(400).send(error.details[0].message);
 
   try {
-    const genre = await Genre.findByIdAndUpdate(
+    const customer = await Customer.findByIdAndUpdate(
       req.params.id,
       {
-        $set: { name: req.body.name },
+        $set: {
+          isGold: req.body.isGold,
+          name: req.body.name,
+          phone: req.body.phone,
+        },
       },
       { new: true }
     );
-    if (!genre) {
+    if (!customer) {
       return res
         .status(404)
-        .send(`The genre with the given ID (${req.params.id}) was not found.`);
+        .send(
+          `The customer with the given ID (${req.params.id}) was not found.`
+        );
     }
-    res.send(genre);
+    res.send(customer);
   } catch (err) {
     res.status(400).send(`Invalid ID format: ${req.params.id}`);
   }
@@ -82,15 +94,17 @@ router.put("/:id", async (req, res) => {
 // DELETE request
 router.delete("/:id", async (req, res) => {
   try {
-    const genre = await Genre.findByIdAndDelete(req.params.id);
+    const customer = await Customer.findByIdAndDelete(req.params.id);
 
-    if (!genre) {
+    if (!customer) {
       return res
         .status(404)
-        .send(`The genre with the given ID (${req.params.id}) was not found.`);
+        .send(
+          `The customer with the given ID (${req.params.id}) was not found.`
+        );
     }
 
-    res.send(genre);
+    res.send(customer);
   } catch (err) {
     res.status(400).send(`Invalid ID format: ${req.params.id}`);
   }
@@ -98,10 +112,13 @@ router.delete("/:id", async (req, res) => {
 
 // Validator
 
-function validateGenre(genre) {
+function validateCustomer(customer) {
   const schema = Joi.object({
-    name: Joi.string().min(3).required(),
+    isGold: Joi.boolean(),
+    name: Joi.string().min(3).max(50).required(),
+    phone: Joi.string().min(9).max(15).required(),
   });
-  return schema.validate(genre);
+  return schema.validate(customer);
 }
+
 module.exports = router;
